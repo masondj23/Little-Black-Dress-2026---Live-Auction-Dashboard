@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Live Auction Planner</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f5f5f3;
+    --bg-tertiary: #eeede9;
+    --text-primary: #1a1a18;
+    --text-secondary: #6b6b67;
+    --text-tertiary: #9b9b96;
+    --border: rgba(0,0,0,0.1);
+    --border-md: rgba(0,0,0,0.18);
+    --green: #1D9E75;
+    --green-bg: #E1F5EE;
+    --green-text: #085041;
+    --amber: #BA7517;
+    --amber-bg: #FAEEDA;
+    --amber-text: #633806;
+    --red: #E24B4A;
+    --red-bg: #FCEBEB;
+    --red-text: #501313;
+    --blue-bg: #E6F1FB;
+    --blue-text: #0C447C;
+    --purple-bg: #EEEDFE;
+    --purple-text: #3C3489;
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg-primary: #1e1e1c;
+      --bg-secondary: #272725;
+      --bg-tertiary: #2e2e2c;
+      --text-primary: #f0efe9;
+      --text-secondary: #a0a09a;
+      --text-tertiary: #6b6b67;
+      --border: rgba(255,255,255,0.1);
+      --border-md: rgba(255,255,255,0.18);
+      --green-bg: #04342C;
+      --green-text: #9FE1CB;
+      --amber-bg: #412402;
+      --amber-text: #FAC775;
+      --red-bg: #501313;
+      --red-text: #F7C1C1;
+      --blue-bg: #042C53;
+      --blue-text: #B5D4F4;
+      --purple-bg: #26215C;
+      --purple-text: #CECBF6;
+    }
+  }
+  body {
+    font-family: 'Georgia', serif;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+  .page { max-width: 960px; margin: 0 auto; }
+  header { margin-bottom: 2rem; }
+  header h1 { font-size: 28px; font-weight: normal; letter-spacing: -0.02em; color: var(--text-primary); }
+  header p { font-size: 14px; color: var(--text-secondary); margin-top: 4px; font-family: 'Courier New', monospace; }
+
+  .metrics { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin-bottom: 1.5rem; }
+  @media (max-width: 600px) { .metrics { grid-template-columns: 1fr 1fr; } }
+  .metric { background: var(--bg-primary); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1rem; }
+  .metric-label { font-size: 11px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; font-family: 'Courier New', monospace; }
+  .metric-value { font-size: 24px; font-weight: normal; color: var(--text-primary); }
+  .metric-value.good { color: var(--green); }
+  .metric-value.warn { color: var(--amber); }
+  .metric-value.bad { color: var(--red); }
+  .progress-bar { height: 4px; background: var(--bg-tertiary); border-radius: 2px; margin-top: 8px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 2px; transition: width 0.3s ease; }
+
+  .goal-wrap { background: var(--bg-primary); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1.5rem; }
+  .goal-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+  .goal-header span:first-child { font-size: 13px; color: var(--text-secondary); font-family: 'Courier New', monospace; text-transform: uppercase; letter-spacing: 0.04em; }
+  .goal-header span:last-child { font-size: 13px; font-weight: bold; }
+  .goal-track { height: 12px; background: var(--bg-tertiary); border-radius: 6px; overflow: hidden; }
+  .goal-fill { height: 100%; border-radius: 6px; transition: width 0.3s ease, background 0.3s; }
+  .goal-note { font-size: 11px; color: var(--text-tertiary); margin-top: 6px; font-family: 'Courier New', monospace; }
+
+  .section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-tertiary); font-family: 'Courier New', monospace; margin-bottom: 1rem; }
+
+  .packages { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1.25rem; }
+  @media (max-width: 640px) { .packages { grid-template-columns: 1fr; } }
+
+  .pkg-card { background: var(--bg-primary); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1rem; }
+  .pkg-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; gap: 8px; }
+  .pkg-name-wrap { flex: 1; min-width: 0; }
+  .pkg-name { font-size: 14px; font-weight: bold; color: var(--text-primary); cursor: text; display: inline-block; border-bottom: 1px dashed var(--border-md); outline: none; min-width: 60px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pkg-name:focus { border-bottom-color: var(--green); color: var(--text-primary); }
+  .pkg-name-hint { font-size: 10px; color: var(--text-tertiary); font-family: 'Courier New', monospace; margin-top: 2px; }
+  .pkg-tag { font-size: 10px; padding: 3px 8px; border-radius: 20px; white-space: nowrap; font-family: 'Courier New', monospace; flex-shrink: 0; }
+  .tag-Travel { background: var(--blue-bg); color: var(--blue-text); }
+  .tag-Dining { background: var(--green-bg); color: var(--green-text); }
+  .tag-Experience { background: var(--purple-bg); color: var(--purple-text); }
+
+  .slider-row { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+  .slider-label { font-size: 11px; color: var(--text-secondary); width: 88px; flex-shrink: 0; font-family: 'Courier New', monospace; }
+  input[type=range] {
+    flex: 1; height: 4px; -webkit-appearance: none; appearance: none;
+    background: var(--bg-tertiary); border-radius: 2px; outline: none; cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%;
+    background: var(--text-primary); border: 2px solid var(--bg-primary);
+    box-shadow: 0 0 0 1px var(--border-md); cursor: pointer;
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 14px; height: 14px; border-radius: 50%; background: var(--text-primary);
+    border: 2px solid var(--bg-primary); cursor: pointer;
+  }
+  .slider-val { font-size: 12px; font-weight: bold; color: var(--text-primary); width: 62px; text-align: right; font-family: 'Courier New', monospace; }
+  .pkg-footer { margin-top: 10px; padding-top: 10px; border-top: 0.5px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .pkg-profit-label { font-size: 11px; color: var(--text-tertiary); font-family: 'Courier New', monospace; }
+  .pkg-profit-val { font-size: 14px; font-weight: bold; }
+  .remove-btn { font-size: 11px; color: var(--text-tertiary); background: none; border: none; cursor: pointer; padding: 2px 4px; border-radius: 4px; }
+  .remove-btn:hover { background: var(--red-bg); color: var(--red-text); }
+
+  .add-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 2rem; }
+  .add-btn {
+    font-size: 12px; padding: 7px 14px; border: 0.5px solid var(--border-md); border-radius: 20px;
+    background: transparent; color: var(--text-secondary); cursor: pointer; font-family: 'Courier New', monospace;
+    transition: background 0.15s, color 0.15s;
+  }
+  .add-btn:hover { background: var(--bg-secondary); color: var(--text-primary); }
+
+  .summary { background: var(--bg-primary); border: 0.5px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-tertiary); padding: 10px 14px; border-bottom: 0.5px solid var(--border); font-family: 'Courier New', monospace; font-weight: normal; }
+  th.r, td.r { text-align: right; }
+  td { padding: 9px 14px; border-bottom: 0.5px solid var(--border); color: var(--text-primary); }
+  tr:last-child td { border-bottom: none; background: var(--bg-secondary); font-weight: bold; }
+  tr:hover:not(:last-child) td { background: var(--bg-secondary); }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>Live Auction Planner</h1>
+    <p>Adjust sliders to model packages &amp; hit your goals</p>
+  </header>
+
+  <div class="metrics" id="metrics"></div>
+  <div class="goal-wrap">
+    <div class="goal-header">
+      <span>Profit toward goal</span>
+      <span id="goal-label">$0 / $26,000</span>
+    </div>
+    <div class="goal-track"><div class="goal-fill" id="goal-fill"></div></div>
+    <div class="goal-note" id="goal-note"></div>
+  </div>
+
+  <div class="section-title">Packages — click any name to rename</div>
+  <div class="packages" id="pkg-grid"></div>
+  <div class="add-row">
+    <button class="add-btn" onclick="addPkg('Travel')">+ Travel package</button>
+    <button class="add-btn" onclick="addPkg('Dining')">+ Dining experience</button>
+    <button class="add-btn" onclick="addPkg('Experience')">+ Local experience</button>
+  </div>
+
+  <div class="section-title">Summary</div>
+  <div class="summary"><table id="summary-table"></table></div>
+</div>
+
+<script>
+const GOAL = 26000, BUDGET = 11000;
+let nextId = 20;
+
+let pkgs = [
+  { id:1, name:'Flavor Co. dinner',    tag:'Dining',     consign:0,    bid:2000, qty:1 },
+  { id:2, name:"L'Oca D'Oro dinner",   tag:'Dining',     consign:1000, bid:2400, qty:2 },
+  { id:3, name:'Bespoke (no consign)', tag:'Experience', consign:0,    bid:3900, qty:1 },
+  { id:4, name:'Bespoke premium',      tag:'Experience', consign:2000, bid:3900, qty:1 },
+  { id:5, name:'Tuscany vacation',     tag:'Travel',     consign:2200, bid:4750, qty:2 },
+  { id:6, name:'Ocean front oasis',    tag:'Travel',     consign:1395, bid:2800, qty:3 },
+];
+
+const TEMPLATES = {
+  Travel:     { name:'Travel package',    consign:1395, bid:2800, qty:1 },
+  Dining:     { name:'Private dinner',    consign:0,    bid:2200, qty:1 },
+  Experience: { name:'Experience package',consign:1000, bid:3400, qty:1 },
+};
+
+const fmt = n => '$' + Math.round(n).toLocaleString();
+const profit = p => (p.bid - p.consign) * p.qty;
+const gross  = p => p.bid * p.qty;
+const cost   = p => p.consign * p.qty;
+const totalProfit  = () => pkgs.reduce((s,p) => s + profit(p), 0);
+const totalGross   = () => pkgs.reduce((s,p) => s + gross(p), 0);
+const totalConsign = () => pkgs.reduce((s,p) => s + cost(p), 0);
+
+function renderMetrics() {
+  const tp = totalProfit(), tc = totalConsign(), tg = totalGross();
+  const remaining = GOAL - tp;
+  const pClass = tp >= GOAL ? 'good' : tp >= GOAL * 0.75 ? 'warn' : 'bad';
+  const cClass = tc <= BUDGET ? 'good' : 'bad';
+  document.getElementById('metrics').innerHTML = `
+    <div class="metric">
+      <div class="metric-label">Projected profit</div>
+      <div class="metric-value ${pClass}">${fmt(tp)}</div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(100,tp/GOAL*100).toFixed(1)}%;background:${tp>=GOAL?'var(--green)':tp>=GOAL*.75?'var(--amber)':'var(--red)'}"></div></div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Consignment used</div>
+      <div class="metric-value ${cClass}">${fmt(tc)}</div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(100,tc/BUDGET*100).toFixed(1)}%;background:${tc<=BUDGET?'var(--green)':'var(--red)'}"></div></div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Gross revenue</div>
+      <div class="metric-value">${fmt(tg)}</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">${remaining > 0 ? 'Still needed' : 'Over goal by'}</div>
+      <div class="metric-value ${remaining > 0 ? 'warn' : 'good'}">${fmt(Math.abs(remaining))}</div>
+    </div>`;
+
+  const pct = Math.min(100, tp / GOAL * 100);
+  const fill = document.getElementById('goal-fill');
+  fill.style.width = pct.toFixed(1) + '%';
+  fill.style.background = tp >= GOAL ? 'var(--green)' : tp >= GOAL * 0.75 ? 'var(--amber)' : 'var(--red)';
+  document.getElementById('goal-label').textContent = fmt(tp) + ' / ' + fmt(GOAL);
+  document.getElementById('goal-note').textContent =
+    tc > BUDGET ? `⚠ Consignment over budget by ${fmt(tc - BUDGET)}` :
+    tp >= GOAL  ? `✓ Goal reached! ${fmt(BUDGET - tc)} consignment budget remaining.` :
+    `${fmt(GOAL - tp)} more profit needed · ${fmt(BUDGET - tc)} consignment budget remaining`;
+}
+
+function renderPackages() {
+  document.getElementById('pkg-grid').innerHTML = '';
+  pkgs.forEach(p => {
+    const pr = profit(p);
+    const prColor = pr >= 0 ? 'var(--green)' : 'var(--red)';
+    const card = document.createElement('div');
+    card.className = 'pkg-card';
+    card.id = 'card-' + p.id;
+    card.innerHTML = `
+      <div class="pkg-header">
+        <div class="pkg-name-wrap">
+          <div class="pkg-name" contenteditable="true" spellcheck="false" id="name-${p.id}"
+            onblur="renamePkg(${p.id}, this.textContent)"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"
+          >${p.name}</div>
+          <div class="pkg-name-hint">click to rename</div>
+        </div>
+        <span class="pkg-tag tag-${p.tag}">${p.tag}</span>
+      </div>
+      <div class="slider-row">
+        <span class="slider-label">Consignment</span>
+        <input type="range" min="0" max="5000" step="50" value="${p.consign}" id="sc-${p.id}" oninput="updatePkg(${p.id},'consign',+this.value)">
+        <span class="slider-val" id="vc-${p.id}">${fmt(p.consign)}</span>
+      </div>
+      <div class="slider-row">
+        <span class="slider-label">Expected bid</span>
+        <input type="range" min="500" max="10000" step="50" value="${p.bid}" id="sb-${p.id}" oninput="updatePkg(${p.id},'bid',+this.value)">
+        <span class="slider-val" id="vb-${p.id}">${fmt(p.bid)}</span>
+      </div>
+      <div class="slider-row">
+        <span class="slider-label">Quantity</span>
+        <input type="range" min="1" max="10" step="1" value="${p.qty}" id="sq-${p.id}" oninput="updatePkg(${p.id},'qty',+this.value)">
+        <span class="slider-val" id="vq-${p.id}">${p.qty}</span>
+      </div>
+      <div class="pkg-footer">
+        <div>
+          <div class="pkg-profit-label">Projected profit</div>
+          <div class="pkg-profit-val" id="pp-${p.id}" style="color:${prColor}">${fmt(pr)}</div>
+        </div>
+        <button class="remove-btn" onclick="removePkg(${p.id})">Remove</button>
+      </div>`;
+    document.getElementById('pkg-grid').appendChild(card);
+  });
+}
+
+function renderSummary() {
+  const rows = pkgs.map(p => {
+    const pr = profit(p);
+    return `<tr>
+      <td>${p.name}</td>
+      <td class="r">${p.qty}</td>
+      <td class="r">${fmt(p.consign)}</td>
+      <td class="r">${fmt(p.bid)}</td>
+      <td class="r">${fmt(gross(p))}</td>
+      <td class="r" style="color:${pr>=0?'var(--green)':'var(--red)'}">${fmt(pr)}</td>
+    </tr>`;
+  }).join('');
+  const tp = totalProfit(), tc = totalConsign(), tg = totalGross();
+  document.getElementById('summary-table').innerHTML = `
+    <tr><th>Package</th><th class="r">Qty</th><th class="r">Consign/ea</th><th class="r">Exp. bid</th><th class="r">Gross</th><th class="r">Net profit</th></tr>
+    ${rows}
+    <tr><td>Total</td><td></td><td class="r">${fmt(tc)}</td><td></td><td class="r">${fmt(tg)}</td>
+    <td class="r" style="color:${tp>=GOAL?'var(--green)':tp>=GOAL*.75?'var(--amber)':'var(--red)'}">${fmt(tp)}</td></tr>`;
+}
+
+function render() { renderMetrics(); renderPackages(); renderSummary(); }
+
+function updatePkg(id, field, val) {
+  const p = pkgs.find(x => x.id === id);
+  if (!p) return;
+  p[field] = val;
+  const labels = { consign: 'vc', bid: 'vb', qty: 'vq' };
+  const el = document.getElementById(labels[field] + '-' + id);
+  if (el) el.textContent = field === 'qty' ? val : fmt(val);
+  const pp = document.getElementById('pp-' + id);
+  if (pp) { const pr = profit(p); pp.textContent = fmt(pr); pp.style.color = pr >= 0 ? 'var(--green)' : 'var(--red)'; }
+  renderMetrics();
+  renderSummary();
+}
+
+function renamePkg(id, name) {
+  const p = pkgs.find(x => x.id === id);
+  if (p) { p.name = name.trim() || p.name; renderSummary(); }
+}
+
+function removePkg(id) { pkgs = pkgs.filter(x => x.id !== id); render(); }
+
+function addPkg(tag) {
+  const t = TEMPLATES[tag];
+  pkgs.push({ ...t, id: nextId++, tag });
+  render();
+}
+
+render();
+</script>
+</body>
+</html>
